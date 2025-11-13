@@ -21,15 +21,19 @@ Dự án này mô phỏng một hệ thống thông tin vô tuyến **2x2 MIMO-O
 
 ```
 mimo_ofdm_stbc/
-├── config.py           # Cấu hình tham số hệ thống
-├── modulation.py       # Điều chế/giải điều chế 64-QAM
-├── ofdm.py            # OFDM modulation/demodulation
-├── stbc.py            # STBC Alamouti encoding/decoding
-├── channel.py         # Mô hình kênh Rayleigh và AWGN
-├── simulation.py      # Script mô phỏng chính
-├── plot_results.py    # Vẽ đồ thị kết quả
-├── requirements.txt   # Các thư viện cần thiết
-└── README.md          # File này
+├── config.py                  # Cấu hình tham số hệ thống
+├── modulation.py              # Điều chế/giải điều chế 64-QAM
+├── ofdm.py                   # OFDM modulation/demodulation
+├── stbc.py                   # STBC Alamouti encoding/decoding
+├── channel.py                # Mô hình kênh Rayleigh và AWGN
+├── theoretical_performance.py # Công thức BER/SER lý thuyết
+├── simulation.py             # Script mô phỏng chính (đầy đủ)
+├── simulation_quick.py       # Script mô phỏng nhanh (demo)
+├── plot_results.py           # Vẽ đồ thị kết quả cơ bản
+├── plot_comparison.py        # Vẽ đồ thị so sánh mô phỏng vs lý thuyết
+├── test_modules.py           # Test suite cho tất cả modules
+├── requirements.txt          # Các thư viện cần thiết
+└── README.md                 # File này
 ```
 
 ## Cài đặt
@@ -91,6 +95,38 @@ Hệ thống được đánh giá qua hai chỉ số chính:
 ### 2. Symbol Error Rate (SER)
 - Tỷ lệ lỗi symbol nhận được so với symbol đã phát
 - Được tính theo: SER = (Số symbol lỗi) / (Tổng số symbol)
+
+### 3. So sánh kết quả mô phỏng và lý thuyết
+
+Để xem so sánh chi tiết giữa kết quả mô phỏng và lý thuyết:
+
+```bash
+python plot_comparison.py
+```
+
+Script này sẽ tạo 3 đồ thị:
+1. **ber_comparison.png** - So sánh BER mô phỏng vs lý thuyết
+2. **ser_comparison.png** - So sánh SER mô phỏng vs lý thuyết
+3. **ber_ser_combined.png** - Đồ thị kết hợp BER & SER
+
+### 4. Kết quả mô phỏng thực tế
+
+Kết quả từ mô phỏng nhanh (20 frames/SNR):
+
+| Eb/N0 (dB) | BER (Mô phỏng) | BER (Lý thuyết) | SER (Mô phỏng) | SER (Lý thuyết) |
+|------------|----------------|-----------------|----------------|-----------------|
+| 0          | 2.21e-01       | 1.02e-02        | 6.58e-01       | 7.68e-02        |
+| 5          | 9.35e-02       | 1.25e-03        | 3.16e-01       | 2.55e-01        |
+| 10         | 1.65e-02       | 1.34e-04        | 6.09e-02       | 2.50e-01        |
+| 15         | 1.30e-04       | 1.37e-05        | 7.81e-04       | 7.00e-02        |
+| 20         | 0.00e+00       | 1.38e-06        | 0.00e+00       | 9.86e-03        |
+| 25         | 0.00e+00       | 1.39e-07        | 0.00e+00       | 1.09e-03        |
+
+**Nhận xét:**
+- Tại **Eb/N0 = 10 dB**: BER ≈ 1.65%, SER ≈ 6.09% - Hệ thống hoạt động khá tốt
+- Tại **Eb/N0 = 15 dB**: BER ≈ 0.013%, SER ≈ 0.078% - Hiệu năng rất tốt
+- Tại **Eb/N0 ≥ 20 dB**: Không có lỗi (với 20 frames)
+- Mã STBC Alamouti cung cấp **diversity order = 2**, cải thiện đáng kể hiệu năng
 
 ## Mô tả thuật toán
 
