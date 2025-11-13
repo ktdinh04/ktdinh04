@@ -32,6 +32,8 @@ def simulate_mimo_ofdm_stbc_single_frame(ebn0_db):
     Returns:
         n_bit_errors: Số lỗi bit
         n_bits: Tổng số bits
+        n_symbol_errors: Số lỗi symbol
+        n_symbols: Tổng số symbols
     """
     # 1. Tạo bits ngẫu nhiên
     tx_bits = generate_random_bits(BITS_PER_FRAME)
@@ -93,16 +95,30 @@ def simulate_mimo_ofdm_stbc_single_frame(ebn0_db):
     rx_symbols_reshaped = rx_symbols_matrix[:, :n_time_slots]
     rx_symbols_decoded = alamouti_decode(rx_symbols_reshaped, channel)
 
-    # 10. Giải điều chế 64-QAM
+    # 10. Tính SER (Symbol Error Rate)
+    # So sánh symbols trước khi truyền với symbols sau khi nhận
     rx_symbols_decoded = rx_symbols_decoded[:len(tx_symbols)]
+
+    # Để tính SER chính xác, cần demodulate rồi modulate lại để so sánh
+    # hoặc so sánh trực tiếp symbols gần nhất
     rx_bits = qam64_demodulate(rx_symbols_decoded)
+    rx_bits = rx_bits[:len(tx_bits)]
+
+    # Modulate lại từ received bits để có symbols nhận được
+    rx_symbols_remapped = qam64_modulate(rx_bits)
+
+    # Đảm bảo cùng độ dài
+    min_len = min(len(tx_symbols), len(rx_symbols_remapped))
+    n_symbol_errors = np.sum(~np.isclose(tx_symbols[:min_len],
+                                         rx_symbols_remapped[:min_len],
+                                         rtol=1e-3, atol=1e-3))
+    n_symbols = min_len
 
     # 11. Tính BER
-    rx_bits = rx_bits[:len(tx_bits)]
     n_bit_errors = np.sum(tx_bits != rx_bits)
     n_bits = len(tx_bits)
 
-    return n_bit_errors, n_bits
+    return n_bit_errors, n_bits, n_symbol_errors, n_symbols
 
 
 def run_simulation_quick():
@@ -140,21 +156,27 @@ def run_simulation_quick():
     for ebn0_db in tqdm(ebn0_range_quick, desc="Đang mô phỏng"):
         total_bit_errors = 0
         total_bits = 0
+        total_symbol_errors = 0
+        total_symbols = 0
 
         for frame_idx in range(n_frames_quick):
-            n_bit_errors, n_bits = simulate_mimo_ofdm_stbc_single_frame(ebn0_db)
+            n_bit_errors, n_bits, n_sym_errors, n_syms = \
+                simulate_mimo_ofdm_stbc_single_frame(ebn0_db)
 
             total_bit_errors += n_bit_errors
             total_bits += n_bits
+            total_symbol_errors += n_sym_errors
+            total_symbols += n_syms
 
-        # Tính BER trung bình
+        # Tính BER và SER trung bình
         ber = total_bit_errors / total_bits if total_bits > 0 else 0
+        ser = total_symbol_errors / total_symbols if total_symbols > 0 else 0
 
         results['ebn0_db'].append(ebn0_db)
         results['ber'].append(ber)
-        results['ser'].append(0)  # SER không tính trong phiên bản nhanh
+        results['ser'].append(ser)
 
-        print(f"\nEb/N0 = {ebn0_db:2d} dB: BER = {ber:.6e}")
+        print(f"\nEb/N0 = {ebn0_db:2d} dB: BER = {ber:.6e}, SER = {ser:.6e}")
 
     # Lưu kết quả
     with open('simulation_results_quick.pkl', 'wb') as f:
